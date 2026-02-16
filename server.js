@@ -94,11 +94,20 @@ app.use(express.static('public'));
 // --- WebSocket Broadcast ---
 function broadcast(data, excludeWs = null) {
     const message = JSON.stringify(data);
+    let sentCount = 0;
+    let hardwareCount = 0;
     wss.clients.forEach(client => {
         if (client !== excludeWs && client.readyState === WebSocket.OPEN) {
             client.send(message);
+            sentCount++;
+            if (client.role === 'hardware') {
+                hardwareCount++;
+            }
         }
     });
+    if (data.type === 'COMMAND') {
+        console.log(`Broadcast COMMAND sent to ${sentCount} clients (${hardwareCount} hardware)`);
+    }
 }
 
 // --- AUTOMATION ENGINE (IST) ---
@@ -255,6 +264,7 @@ wss.on('connection', (ws, req) => {
                     switches[switchId] = value;
                     await updateAndSave({ switches }, false); // Toggle is transient until ESP confirms it
 
+                    console.log(`Broadcasting COMMAND to toggle ${switchId} to ${value}`);
                     broadcast({ type: 'COMMAND', data: { action: 'TOGGLE', switchId, value } });
                     broadcast({ type: 'STATE_CHANGED', data: state });
                 }
