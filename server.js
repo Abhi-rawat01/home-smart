@@ -67,18 +67,23 @@ if (MONGODB_URI) {
 // Helper to save state (updates both RAM and DB)
 async function updateAndSave(updates, shouldPersist = false) {
     // Merge updates into our local state object
-    // Mongoose handles deep updates well if we use .set or structured updates
     if (updates.switches) Object.assign(state.switches, updates.switches);
     if (updates.physical) Object.assign(state.physical, updates.physical);
     if (updates.names) Object.assign(state.names, updates.names);
     if (updates.system) Object.assign(state.system, updates.system);
 
     // Only save to MongoDB if requested (primarily for name changes)
-    if (MONGODB_URI && shouldPersist) {
-        state.markModified('names');
-        // Only saving the names object specifically
-        await state.save();
-        console.log('Names persisted to MongoDB');
+    if (MONGODB_URI && shouldPersist && updates.names) {
+        try {
+            await State.findOneAndUpdate(
+                { id: 'main_state' },
+                { $set: { names: state.names } },
+                { upsert: true }
+            );
+            console.log('Names persisted to MongoDB');
+        } catch (err) {
+            console.error('Error saving to MongoDB:', err);
+        }
     }
 }
 
@@ -203,7 +208,10 @@ wss.on('connection', (ws, req) => {
                     if (payload.data.system) updates.system = payload.data.system;
 
                     await updateAndSave(updates, false);
+                    
+                    // Immediately broadcast to all clients that hardware is online
                     broadcast({ type: 'STATE_CHANGED', data: state });
+                    console.log('Hardware state synced and broadcasted to all clients');
                 }
             }
             else if (payload.type === 'UPDATE_STATUS') {
@@ -211,6 +219,7 @@ wss.on('connection', (ws, req) => {
                 const updates = {};
                 if (payload.data.switches) updates.switches = payload.data.switches;
                 if (payload.data.physical) updates.physical = payload.data.physical;
+                if (payload.data.system) updates.system = payload.data.system;
 
                 await updateAndSave(updates, false);
                 broadcast({ type: 'STATE_CHANGED', data: state }, ws);
@@ -322,6 +331,10 @@ wss.on('connection', (ws, req) => {
             state.isHardwareOnline = false;
             broadcast({ type: 'STATE_CHANGED', data: state });
         }
+    });
+
+    ws.on('error', (error) => {
+        console.error('WebSocket error:', error);
     });
 });
 
