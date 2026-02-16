@@ -110,6 +110,22 @@ function broadcast(data, excludeWs = null) {
     }
 }
 
+// --- Server-side Heartbeat (Keep connections alive) ---
+const heartbeatInterval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) {
+            console.log('Terminating dead connection');
+            return ws.terminate();
+        }
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000); // Ping every 30 seconds
+
+wss.on('close', () => {
+    clearInterval(heartbeatInterval);
+});
+
 // --- AUTOMATION ENGINE (IST) ---
 let preNightLedMode = 1; // Default to Breathing if never set
 
@@ -195,6 +211,12 @@ wss.on('connection', (ws, req) => {
     const ip = req.socket.remoteAddress;
     console.log(`New connection from ${ip}`);
     ws.role = 'app'; // Default
+    ws.isAlive = true;
+
+    // Heartbeat pong handler
+    ws.on('pong', () => {
+        ws.isAlive = true;
+    });
 
     // Initial sync
     ws.send(JSON.stringify({ type: 'FULL_STATE', data: state }));
@@ -335,11 +357,13 @@ wss.on('connection', (ws, req) => {
         }
     });
 
-    ws.on('close', () => {
+    ws.on('close', (code, reason) => {
         if (ws.role === 'hardware') {
-            console.log('--- HW DEVICE DISCONNECTED ---');
+            console.log(`--- HW DEVICE DISCONNECTED --- Code: ${code}, Reason: ${reason || 'No reason provided'}`);
             state.isHardwareOnline = false;
             broadcast({ type: 'STATE_CHANGED', data: state });
+        } else {
+            console.log(`App disconnected from ${ip}`);
         }
     });
 
