@@ -1,0 +1,24 @@
+{
+  "names": {
+    "name1": "Light",
+    "name2": "Kitchen SOCKET",
+    "name3": "Tubelight",
+    "name4": "Fan"
+  },
+  "physical": {
+    "switch1": 0,
+    "switch4": 0
+  },
+  "switches": {
+    "switch1": 1,
+    "switch2": 1,
+    "switch3": 0,
+    "switch4": 0
+  },
+  "system": {
+    "lastSeen": 1771221246409,
+    "ledMode": 0,
+    "reboot": 0,
+    "rssi": -59
+  }
+}
