@@ -32,39 +32,40 @@ const StateSchema = new mongoose.Schema({
     },
     system: {
         ledMode: { type: Number, default: 0 },
-        reboot: { type: Number, default: 0 }
-    }
+        reboot: { type: Number, default: 0 },
+        rssi: { type: Number, default: 0 }
+    },
+    isHardwareOnline: { type: Boolean, default: false }
 });
 
 const State = mongoose.model('State', StateSchema);
 
-let state = null; // Memory state
+let state = {
+    names: { name1: "Light", name2: "SOCKET", name3: "Tubelight", name4: "Fan" },
+    physical: { switch1: 0, switch4: 0 },
+    switches: { switch1: 0, switch2: 0, switch3: 0, switch4: 0 },
+    system: { ledMode: 0, reboot: 0, rssi: 0 },
+    isHardwareOnline: false
+};
 
 // Connect to MongoDB
 if (MONGODB_URI) {
     mongoose.connect(MONGODB_URI)
         .then(async () => {
             console.log('Connected to MongoDB Atlas');
-            // Load or initialize state
-            state = await State.findOne({ id: 'main_state' });
-            if (!state) {
-                state = new State();
-                await state.save();
+            const dbState = await State.findOne({ id: 'main_state' });
+            if (dbState) {
+                // Merge DB state into memory state to keep isHardwareOnline: false
+                Object.assign(state, dbState.toObject());
+                console.log('Current state loaded from MongoDB');
+            } else {
+                const newState = new State();
+                await newState.save();
+                Object.assign(state, newState.toObject());
                 console.log('Initialized new state in MongoDB');
             }
-            console.log('Current state loaded from MongoDB');
         })
         .catch(err => console.error('MongoDB connection error:', err));
-} else {
-    console.warn('WARNING: MONGODB_URI not found. Running with ephemeral memory state only.');
-    // Fallback for local dev without DB
-    state = {
-        names: { name1: "Light", name2: "SOCKET", name3: "Tubelight", name4: "Fan" },
-        physical: { switch1: 0, switch4: 0 },
-        switches: { switch1: 0, switch2: 0, switch3: 0, switch4: 0 },
-        system: { ledMode: 0, reboot: 0 },
-        isHardwareOnline: false // Live memory tracking
-    };
 }
 
 // Helper to save state (updates both RAM and DB)
