@@ -100,6 +100,28 @@ function broadcast(data, excludeWs = null) {
     });
 }
 
+// --- AUTOMATION ENGINE (IST) ---
+setInterval(async () => {
+    const now = new Date();
+    // Calculate IST (UTC + 5:30)
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istTime = new Date(now.getTime() + istOffset);
+
+    const hours = istTime.getUTCHours();
+    const minutes = istTime.getUTCMinutes();
+
+    // 1. Aura Night Protocol (22:30 / 10:30 PM)
+    if ((hours > 22 || (hours === 22 && minutes >= 30)) || (hours < 4)) {
+        // If Relay 1 is OFF, turn Aura OFF
+        if (state.switches.switch1 === 0 && state.system.ledMode !== 0) {
+            console.log('--- AUTO-AUTOMATION: It is late and Light is OFF. Disabling Aura. ---');
+            await updateAndSave({ system: { ledMode: 0 } }, false);
+            broadcast({ type: 'STATE_CHANGED', data: state });
+            broadcast({ type: 'COMMAND', data: { action: 'SYSTEM', ledMode: 0 } });
+        }
+    }
+}, 60000); // Check every minute
+
 // --- WebSocket connection handling ---
 wss.on('connection', (ws, req) => {
     const ip = req.socket.remoteAddress;
@@ -191,6 +213,7 @@ wss.on('connection', (ws, req) => {
 });
 
 // --- REST API ---
+app.get('/ping', (req, res) => res.send('PONG - System Active')); // Wake-up endpoint
 app.get('/api/state', (req, res) => res.json(state));
 
 app.post('/api/toggle', async (req, res) => {
