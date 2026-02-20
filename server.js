@@ -19,8 +19,30 @@ const StateSchema = new mongoose.Schema({
         name2: { type: String, default: "SOCKET" },
         name3: { type: String, default: "Tubelight" },
         name4: { type: String, default: "Fan" }
+    },
+    switches: {
+        switch1: { type: Number, default: 0 },
+        switch2: { type: Number, default: 0 },
+        switch3: { type: Number, default: 0 },
+        switch4: { type: Number, default: 0 }
+    },
+    schedules: {
+        switch1: { active: Boolean, time: String, action: Number },
+        switch2: { active: Boolean, time: String, action: Number },
+        switch3: { active: Boolean, time: String, action: Number },
+        switch4: { active: Boolean, time: String, action: Number }
+    },
+    timers: {
+        switch1: { active: Boolean, endAt: Number, action: Number },
+        switch2: { active: Boolean, endAt: Number, action: Number },
+        switch3: { active: Boolean, endAt: Number, action: Number },
+        switch4: { active: Boolean, endAt: Number, action: Number }
+    },
+    system: {
+        ledMode: { type: Number, default: 1 },
+        rssi: { type: Number, default: 0 }
     }
-});
+}, { timestamps: true });
 
 const State = mongoose.model('State', StateSchema);
 
@@ -52,13 +74,27 @@ if (MONGODB_URI) {
             console.log('Connected to MongoDB Atlas');
             const dbState = await State.findOne({ id: 'main_state' });
             if (dbState) {
-                // Restore ONLY names from DB. Everything else is transient memory.
-                Object.assign(state.names, dbState.names);
-                console.log('Persisted names loaded from MongoDB');
+                // RESTORE FULL STATE FROM DB
+                if (dbState.names) Object.assign(state.names, dbState.names);
+                if (dbState.switches) Object.assign(state.switches, dbState.switches);
+                if (dbState.schedules) Object.assign(state.schedules, dbState.schedules);
+                if (dbState.timers) {
+                    // Filter out expired timers
+                    const now = Date.now();
+                    for (let key in dbState.timers) {
+                        if (dbState.timers[key].active && dbState.timers[key].endAt < now) {
+                            dbState.timers[key].active = false;
+                        }
+                    }
+                    Object.assign(state.timers, dbState.timers);
+                }
+                if (dbState.system) Object.assign(state.system, dbState.system);
+
+                console.log('Full persistent state restored from MongoDB');
             } else {
                 const newState = new State();
                 await newState.save();
-                console.log('Initialized new name registry in MongoDB');
+                console.log('Initialized new system state in MongoDB');
             }
         })
         .catch(err => console.error('MongoDB connection error:', err));
@@ -71,18 +107,28 @@ async function updateAndSave(updates, shouldPersist = false) {
     if (updates.physical) Object.assign(state.physical, updates.physical);
     if (updates.names) Object.assign(state.names, updates.names);
     if (updates.system) Object.assign(state.system, updates.system);
+    if (updates.schedules) Object.assign(state.schedules, updates.schedules);
+    if (updates.timers) Object.assign(state.timers, updates.timers);
 
-    // Only save to MongoDB if requested (primarily for name changes)
-    if (MONGODB_URI && shouldPersist && updates.names) {
+    // Save ALL critical state to MongoDB
+    if (MONGODB_URI && shouldPersist) {
         try {
             await State.findOneAndUpdate(
                 { id: 'main_state' },
-                { $set: { names: state.names } },
+                {
+                    $set: {
+                        names: state.names,
+                        switches: state.switches,
+                        schedules: state.schedules,
+                        timers: state.timers,
+                        system: state.system
+                    }
+                },
                 { upsert: true }
             );
-            console.log('Names persisted to MongoDB');
+            console.log('[DB] System state persisted to MongoDB');
         } catch (err) {
-            console.error('Error saving to MongoDB:', err);
+            console.error('[DB] Persistence error:', err);
         }
     }
 }
@@ -239,7 +285,7 @@ wss.on('connection', (ws, req) => {
                     if (payload.data.system) updates.system = payload.data.system;
 
                     await updateAndSave(updates, false);
-                    
+
                     // Immediately broadcast to all clients that hardware is online
                     broadcast({ type: 'STATE_CHANGED', data: state });
                     console.log('Hardware state synced and broadcasted to all clients');
@@ -271,16 +317,7 @@ wss.on('connection', (ws, req) => {
 
                 const switches = { ...state.switches };
 
-                // --- SUPERIOR SWITCH LOGIC (1 & 4) ---
-                if ((switchId === 'switch1' || switchId === 'switch4') && value === 1) {
-                    const physicalStatus = state.physical[switchId];
-                    if (physicalStatus === 0) {
-                        console.log(`REJECTED: Cannot turn ${switchId} ON because physical switch is OFF.`);
-                        // Force App state back to OFF
-                        ws.send(JSON.stringify({ type: 'STATE_CHANGED', data: state }));
-                        return; // Exit early, do not broadcast command
-                    }
-                }
+                /* Restrictive Override Removed - Allowing App to Toggle Regardless of Physical Position */
 
                 if (switches.hasOwnProperty(switchId)) {
                     switches[switchId] = value;
@@ -302,6 +339,9 @@ wss.on('connection', (ws, req) => {
 
                 // 2. Sync with Hardware (Offline Protection)
                 broadcast({ type: 'COMMAND', data: { action: 'SYNC_SCHED', switchId, active, time, action } });
+
+                // 3. Persist to DB
+                await updateAndSave({ schedules: state.schedules }, true);
             }
             else if (payload.type === 'SET_TIMER') {
                 const { switchId, active, duration, action } = payload.data;
@@ -318,6 +358,9 @@ wss.on('connection', (ws, req) => {
 
                 // 2. Sync with Hardware (Offline Protection)
                 broadcast({ type: 'COMMAND', data: { action: 'SYNC_TIMER', switchId, active, duration, action } });
+
+                // 3. Persist to DB
+                await updateAndSave({ timers: state.timers }, true);
             }
             else if (payload.type === 'DELETE_TASK') {
                 const { switchId, taskType } = payload.data;
@@ -379,14 +422,7 @@ app.get('/api/state', (req, res) => res.json(state));
 app.post('/api/toggle', async (req, res) => {
     const { switchId, value } = req.body;
 
-    // --- SUPERIOR SWITCH LOGIC (1 & 4) ---
-    if ((switchId === 'switch1' || switchId === 'switch4') && value === 1) {
-        const physicalStatus = state.physical[switchId];
-        if (physicalStatus === 0) {
-            console.log(`API REJECTED: Cannot turn ${switchId} ON because physical switch is OFF.`);
-            return res.status(403).json({ success: false, error: 'Physical switch is OFF', state });
-        }
-    }
+    /* Restrictive Override Removed */
 
     if (state.switches.hasOwnProperty(switchId)) {
         const switches = { ...state.switches };

@@ -1,0 +1,2509 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Switch Control</title>
+    <!-- Font Imports -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Cinzel:wght@600&family=Fredoka:wght@600&family=Inter:wght@400;600;800&family=Luckiest+Guy&family=Orbitron:wght@600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            /* Palette: Evergreen (#1F3A34) & Frosted Snow (#F4F8F9) */
+            --evergreen: #1F3A34;
+            --snow: #F4F8F9;
+
+            --primary: var(--snow);
+            --success: #2dd4bf;
+            --danger: #f43f5e;
+            --warning: #fbbf24;
+            --glass: rgba(244, 248, 249, 0.08);
+            --glass-dark: rgba(31, 58, 52, 0.4);
+            --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            font-family: var(--font-family);
+            background: radial-gradient(circle at top right, #2a4d45, var(--evergreen));
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--snow);
+            overflow: hidden;
+            position: relative;
+            user-select: none;
+        }
+
+        button,
+        input,
+        textarea,
+        select {
+            font-family: inherit;
+        }
+
+        /* --- UI ANIMATIONS --- */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(244, 248, 249, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 15px rgba(244, 248, 249, 0);
+            }
+        }
+
+        @keyframes rotateFan {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 28px;
+            padding: 35px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            z-index: 10;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* Settings Mode - Fixed Height & Flex */
+        .glass-card.settings-mode {
+            height: 580px;
+            /* Strict fixed height for uniformity */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            /* Prevent any content from expanding the card */
+        }
+
+        /* --- MINI TABS & THEME CARDS --- */
+        .mini-tab-wrapper {
+            display: flex;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 14px;
+            padding: 4px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            flex-shrink: 0;
+        }
+
+        .mini-tab-btn {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            color: var(--snow);
+            opacity: 0.5;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+            letter-spacing: 1px;
+        }
+
+        .mini-tab-btn:hover {
+            opacity: 0.8;
+        }
+
+        .mini-tab-btn.active {
+            background: var(--snow);
+            color: var(--evergreen);
+            opacity: 1;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .theme-card {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 15px;
+            border-radius: 18px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .theme-card.active {
+            background: linear-gradient(90deg, rgba(244, 248, 249, 0.1), rgba(244, 248, 249, 0.05));
+            border-color: var(--snow);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .theme-preview {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            margin-right: 15px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-info {
+            flex: 1;
+        }
+
+        .theme-name {
+            font-weight: 700;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: var(--snow);
+        }
+
+        .theme-tags {
+            font-size: 11px;
+            opacity: 0.6;
+            font-weight: 500;
+        }
+
+        .theme-check {
+            width: 24px;
+            height: 24px;
+            background: var(--snow);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--evergreen);
+            transform: scale(0);
+            transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            opacity: 0;
+        }
+
+        .theme-card.active .theme-check {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* --- SCROLLABLE THEME LIST (INVISIBLE SCROLLBAR) --- */
+        .theme-scroll-area {
+            height: 300px;
+            /* Reduced to fit safely within 580px card */
+            overflow-y: auto;
+            padding-right: 0;
+            /* Removed padding for scrollbar space */
+            margin-top: 15px;
+            padding-bottom: 10px;
+            /* Hide Scrollbar Standard */
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            /* Integrated look */
+            mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 90%, transparent 100%);
+        }
+
+        /* Hide Scrollbar Webkit */
+        .theme-scroll-area::-webkit-scrollbar {
+            display: none;
+        }
+
+        .header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin: 0;
+            color: #fff;
+            font-size: 24px;
+            text-transform: uppercase;
+        }
+
+        p.subtitle {
+            font-size: 0.9rem;
+            opacity: 0.5;
+            margin-top: 5px;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.4s;
+            z-index: 10;
+        }
+
+        .settings-btn:hover {
+            background: var(--primary);
+            transform: rotate(90deg);
+        }
+
+        .button-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .control-btn {
+            padding: 20px;
+            background: var(--glass-dark);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .control-btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(244, 248, 249, 0.15);
+            border-color: var(--snow);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn.on {
+            background: linear-gradient(135deg, rgba(244, 248, 249, 0.15), rgba(244, 248, 249, 0.05));
+            border-color: var(--snow);
+            box-shadow: 0 0 25px rgba(244, 248, 249, 0.2);
+        }
+
+        .control-btn.on .status-indicator {
+            background: var(--snow);
+            box-shadow: 0 0 12px var(--snow);
+        }
+
+        .btn-icon {
+            font-size: 32px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Sun rays animation */
+        #btn1 .btn-icon svg {
+            animation: sunRays 3s ease-in-out infinite;
+            animation-play-state: paused;
+        }
+
+        #btn1.on .btn-icon svg {
+            animation-play-state: running;
+            filter: drop-shadow(0 0 12px var(--snow));
+        }
+
+        @keyframes sunRays {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            50% {
+                transform: rotate(180deg);
+            }
+        }
+
+        /* Plug and Socket animation - Enhanced */
+        #btn2 .btn-icon svg .plug {
+            transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform: translateY(0);
+        }
+
+        #btn2 .btn-icon svg .cable {
+            transition: all 0.5s ease;
+        }
+
+        #btn2 .btn-icon svg .current-effects {
+            opacity: 0;
+            transform: scale(0.8);
+            transition: all 0.3s ease;
+        }
+
+        #btn2 .btn-icon svg .arc1,
+        #btn2 .btn-icon svg .arc2 {
+            animation: electricArc 0.4s ease-in-out infinite alternate;
+            animation-play-state: paused;
+        }
+
+        #btn2 .btn-icon svg .arc2 {
+            animation-delay: 0.2s;
+        }
+
+        #btn2 .btn-icon svg .particle1,
+        #btn2 .btn-icon svg .particle2,
+        #btn2 .btn-icon svg .particle3 {
+            animation: particleFloat 1s ease-in-out infinite;
+            animation-play-state: paused;
+        }
+
+        #btn2 .btn-icon svg .particle2 {
+            animation-delay: 0.3s;
+        }
+
+        #btn2 .btn-icon svg .particle3 {
+            animation-delay: 0.6s;
+        }
+
+        /* When ON - plug connects */
+        #btn2.on .btn-icon svg .plug {
+            transform: translateY(14px);
+        }
+
+        #btn2.on .btn-icon svg .cable {
+            opacity: 0.9;
+            stroke-width: 3;
+        }
+
+        #btn2.on .btn-icon svg {
+            filter: drop-shadow(0 0 15px var(--snow));
+        }
+
+        #btn2.on .btn-icon svg .current-effects {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #btn2.on .btn-icon svg .arc1,
+        #btn2.on .btn-icon svg .arc2,
+        #btn2.on .btn-icon svg .particle1,
+        #btn2.on .btn-icon svg .particle2,
+        #btn2.on .btn-icon svg .particle3 {
+            animation-play-state: running;
+        }
+
+        @keyframes electricArc {
+            0% {
+                opacity: 0.4;
+                stroke-width: 1.5;
+            }
+
+            100% {
+                opacity: 1;
+                stroke-width: 2.2;
+            }
+        }
+
+        @keyframes particleFloat {
+
+            0%,
+            100% {
+                opacity: 0.3;
+                transform: translateY(0) scale(1);
+            }
+
+            50% {
+                opacity: 1;
+                transform: translateY(-2px) scale(1.3);
+            }
+        }
+
+        /* Lightning bolt animation */
+        #btn3 .btn-icon svg {
+            animation: lightning 0.5s ease-in-out infinite;
+            animation-play-state: paused;
+        }
+
+        #btn3.on .btn-icon svg {
+            animation-play-state: running;
+            filter: drop-shadow(0 0 12px var(--snow));
+        }
+
+        @keyframes lightning {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        /* Fan rotation animation */
+        #btn4 .btn-icon svg {
+            animation: rotateFan 2s linear infinite;
+            animation-play-state: paused;
+        }
+
+        #btn4.on .btn-icon svg {
+            animation-play-state: running;
+            filter: drop-shadow(0 0 12px var(--snow));
+        }
+
+        .btn-label {
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #64748b;
+            transition: all 0.3s;
+        }
+
+        .rename-section {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid rgba(244, 248, 249, 0.1);
+        }
+
+        .field-label {
+            font-size: 13px;
+            margin-bottom: 20px;
+            opacity: 0.75;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--snow);
+        }
+
+        .rename-grid {
+            display: grid;
+            gap: 16px;
+        }
+
+        .rename-item {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .rename-item input {
+            flex: 1;
+            padding: 14px 20px;
+            background: rgba(10, 20, 18, 0.4);
+            border: 1px solid rgba(244, 248, 249, 0.05);
+            border-radius: 18px;
+            color: var(--snow);
+            font-size: 15px;
+            outline: none;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .rename-item input:focus {
+            background: rgba(10, 20, 18, 0.6);
+            border-color: var(--snow);
+            box-shadow: 0 0 15px rgba(244, 248, 249, 0.1);
+        }
+
+        .rename-item .btn-number {
+            width: 48px;
+            height: 48px;
+            background: var(--snow);
+            color: var(--evergreen);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        .save-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--snow);
+            border: none;
+            border-radius: 20px;
+            color: var(--evergreen);
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 25px;
+            letter-spacing: 1px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(244, 248, 249, 0.3);
+        }
+
+        .save-btn:active {
+            transform: scale(0.97);
+        }
+
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        input,
+        textarea {
+            user-select: text;
+            -webkit-user-select: text;
+        }
+
+        #settingsPanel {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        #settingsPanel.show {
+            display: block;
+        }
+
+        #mainPanel.hide {
+            display: none;
+        }
+
+        .wifi-btn {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            background: transparent;
+            border: none;
+            border-radius: 14px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: 0.3s;
+        }
+
+        .wifi-btn svg {
+            width: 22px;
+            height: 22px;
+            transition: 0.3s;
+        }
+
+        .wifi-btn.online svg {
+            stroke: #fbbf24;
+            filter: drop-shadow(0 0 10px #fbbf24);
+        }
+
+        .wifi-btn.offline svg {
+            stroke: #f43f5e;
+            filter: drop-shadow(0 0 10px #f43f5e);
+        }
+
+        .wifi-btn.rebooting svg {
+            stroke: #38bdf8;
+            animation: blinkWifi 0.6s ease-in-out infinite;
+        }
+
+        @keyframes blinkWifi {
+
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1.05);
+            }
+
+            50% {
+                opacity: 0.3;
+                transform: scale(0.95);
+            }
+        }
+
+        .top-bar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            margin-bottom: 25px;
+        }
+
+        .back-btn-circle {
+            width: 44px;
+            height: 44px;
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+
+        .back-btn-circle:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateX(-3px);
+        }
+
+        .settings-title {
+            flex: 1;
+            text-align: center;
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            color: #fff;
+            padding-right: 44px;
+            /* Balance the back button */
+        }
+
+        .back-text {
+            color: var(--primary);
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        /* --- HIGH-FIDELITY MINI LOCK --- */
+        .lock-container {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            width: 18px;
+            height: 18px;
+            z-index: 5;
+            display: none;
+            user-select: none;
+        }
+
+        .control-btn#btn1 .lock-container,
+        .control-btn#btn4 .lock-container {
+            display: block;
+        }
+
+        .lock-container svg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: 0.3s;
+        }
+
+        .lock-container .lock-open,
+        .lock-container .lock {
+            display: none;
+            animation: lock-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        /* State Mapping */
+        .lock-container.locked .lock {
+            display: block;
+            fill: #f43f5e;
+            filter: drop-shadow(0 0 8px rgba(244, 63, 94, 0.5));
+        }
+
+        .lock-container.unlocked .lock-open {
+            display: block;
+            fill: #00ff88;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.4));
+        }
+
+        @keyframes lock-pop {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.2);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+
+        /* --- HIGH-FIDELITY ROTATION DIAL --- */
+        .aura-tab-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 0;
+            perspective: 1000px;
+        }
+
+        .dial-container {
+            user-select: none;
+            position: relative;
+            width: 260px;
+            height: 260px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .dial-base {
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            border-radius: 100%;
+            background: #1c1d1f;
+            box-shadow:
+                inset 0 4px 12px rgba(0, 0, 0, 0.8),
+                0 2px 20px rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .dial-inner {
+            z-index: 4;
+            position: absolute;
+            width: 155px;
+            height: 155px;
+            border-radius: 100%;
+            background: linear-gradient(180deg, #f2f6f5 0%, #cbd5d6 100%);
+            box-shadow:
+                inset 0 2px 3px rgba(255, 255, 255, 0.5),
+                0 5px 25px rgba(0, 0, 0, 0.9);
+        }
+
+        .dial-knob {
+            z-index: 5;
+            position: absolute;
+            width: 125px;
+            height: 125px;
+            border-radius: 100%;
+            background: linear-gradient(180deg, #eef7f6 0%, #8d989a 100%);
+            box-shadow:
+                inset 0 2px 4px rgba(255, 255, 255, 0.8),
+                0 10px 30px rgba(0, 0, 0, 0.95),
+                0 0 0 1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+        }
+
+        /* The indicator dot on the knob */
+        .dial-knob::after {
+            content: "";
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            margin-left: -7px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.08);
+            box-shadow:
+                inset 0 1.5px 2px rgba(0, 0, 0, 0.25),
+                0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+
+        .dial-label-ring {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+        }
+
+        .dial-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 50px;
+            margin-top: -25px;
+            transform-origin: 0% 50%;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .dial-label span {
+            width: 45px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 15px;
+            color: #555;
+            transition: 0.4s;
+            text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+        }
+
+        .dial-label.active span {
+            color: var(--primary);
+            text-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+            filter: brightness(1.2);
+        }
+
+        /* Exact position mapping to match the reference image */
+        .dial-label:nth-child(1) {
+            transform: rotate(-90deg);
+        }
+
+        /* --- CUSTOM CONFIRMATION MODAL --- */
+        .confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .confirm-overlay.show {
+            display: flex;
+        }
+
+        .confirm-dialog {
+            background: var(--glass);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 24px;
+            padding: 35px;
+            width: 90%;
+            max-width: 380px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.9);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .confirm-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(251, 191, 36, 0.15);
+            border-radius: 50%;
+            border: 2px solid rgba(251, 191, 36, 0.3);
+        }
+
+        .confirm-icon svg {
+            width: 32px;
+            height: 32px;
+            stroke: #fbbf24;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
+        }
+
+        .confirm-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--snow);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .confirm-message {
+            text-align: center;
+            font-size: 15px;
+            color: var(--snow);
+            opacity: 0.8;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        .confirm-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .confirm-btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            letter-spacing: 0.5px;
+            font-family: inherit;
+        }
+
+        .confirm-btn-cancel {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--snow);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .confirm-btn-cancel:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .confirm-btn-ok {
+            background: #fbbf24;
+            color: #1a1a1a;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+        }
+
+        .confirm-btn-ok:hover {
+            background: #fcd34d;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(251, 191, 36, 0.4);
+        }
+
+        .confirm-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* --- TABS --- */
+
+        /* OFF AT TOP */
+        .dial-label:nth-child(1) span {
+            transform: rotate(90deg);
+            font-size: 13px;
+        }
+
+        .dial-label:nth-child(2) {
+            transform: rotate(-45deg);
+        }
+
+        .dial-label:nth-child(2) span {
+            transform: rotate(45deg);
+        }
+
+        .dial-label:nth-child(3) {
+            transform: rotate(0deg);
+        }
+
+        .dial-label:nth-child(3) span {
+            transform: rotate(0deg);
+        }
+
+        .dial-label:nth-child(4) {
+            transform: rotate(45deg);
+        }
+
+        .dial-label:nth-child(4) span {
+            transform: rotate(-45deg);
+        }
+
+        .dial-label:nth-child(5) {
+            transform: rotate(90deg);
+        }
+
+        .dial-label:nth-child(5) span {
+            transform: rotate(-90deg);
+        }
+
+        .dial-label:nth-child(6) {
+            transform: rotate(135deg);
+        }
+
+        .dial-label:nth-child(6) span {
+            transform: rotate(-135deg);
+        }
+
+        .dial-label:nth-child(7) {
+            transform: rotate(180deg);
+        }
+
+        .dial-label:nth-child(7) span {
+            transform: rotate(-180deg);
+        }
+
+        .dial-label:nth-child(8) {
+            transform: rotate(225deg);
+        }
+
+        .dial-label:nth-child(8) span {
+            transform: rotate(-225deg);
+        }
+
+        .dial-light {
+            position: absolute;
+            z-index: 1;
+            width: 50%;
+            height: 140px;
+            top: 50%;
+            left: 50%;
+            margin-top: -70px;
+            transform-origin: 0% 50%;
+            transition: transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+        }
+
+        .dial-light-beam {
+            position: absolute;
+            left: 70px;
+            width: 110px;
+            height: 110px;
+            background: radial-gradient(circle, rgba(56, 189, 248, 0.25) 0%, rgba(56, 189, 248, 0) 70%);
+            filter: blur(5px);
+        }
+
+        .dial-line {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+            z-index: 1;
+        }
+
+        .dial-line:nth-child(1) {
+            transform: rotate(22.50deg);
+        }
+
+        .dial-line:nth-child(2) {
+            transform: rotate(67.50deg);
+        }
+
+        .dial-line:nth-child(3) {
+            transform: rotate(112.50deg);
+        }
+
+        .dial-line:nth-child(4) {
+            transform: rotate(157.50deg);
+        }
+
+        .mode-description {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px 25px;
+            border-radius: 18px;
+            font-size: 13px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            min-width: 220px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .danger-zone {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px dashed rgba(244, 63, 94, 0.3);
+        }
+
+        .reboot-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 14px;
+            color: var(--danger);
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .reboot-btn:hover {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+        }
+
+        /* --- GLASS GLIDER NAVIGATION --- */
+        .glass-tab-nav {
+            --bg: rgba(255, 255, 255, 0.05);
+            display: flex;
+            position: relative;
+            background: var(--bg);
+            border-radius: 12px;
+            backdrop-filter: blur(12px);
+            box-shadow:
+                inset 1px 1px 4px rgba(255, 255, 255, 0.1),
+                inset -1px -1px 4px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            width: 100%;
+            margin-bottom: 25px;
+            padding: 4px;
+        }
+
+        .glass-tab-nav input {
+            display: none;
+        }
+
+        .glass-tab-nav label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 38px;
+            font-size: 11px;
+            cursor: pointer;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            position: relative;
+            z-index: 2;
+            transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-tab-nav input:checked+label {
+            color: #fff;
+        }
+
+        .glass-glider {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            bottom: 4px;
+            width: calc((100% - 8px) / 4);
+            border-radius: 9px;
+            z-index: 1;
+            transition: transform 0.5s cubic-bezier(0.37, 1.95, 0.66, 0.56),
+                background 0.4s ease-in-out,
+                box-shadow 0.4s ease-in-out;
+        }
+
+        /* Glider Positions & Colors */
+        #tab-rename:checked~.glass-glider {
+            transform: translateX(0%);
+            background: linear-gradient(135deg, #c0c0c055, #f0f0f0);
+            box-shadow: 0 0 15px rgba(192, 192, 192, 0.3);
+        }
+
+        #tab-aura:checked~.glass-glider {
+            transform: translateX(100%);
+            background: linear-gradient(135deg, #38bdf855, #38bdf8);
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+        }
+
+        #tab-theme:checked~.glass-glider {
+            transform: translateX(200%);
+            background: linear-gradient(135deg, #ffd70055, #ffcc00);
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+        }
+
+        #tab-about:checked~.glass-glider {
+            transform: translateX(300%);
+            background: linear-gradient(135deg, #d0e7ff55, #a0d8ff);
+            box-shadow: 0 0 15px rgba(160, 216, 255, 0.3);
+        }
+
+        /* --- THEME SELECTOR SPECIFICS --- */
+        #glass-silver:checked~.glass-glider {
+            transform: translateX(0%);
+            background: linear-gradient(135deg, #c0c0c055, #e0e0e0);
+            box-shadow: 0 0 18px rgba(192, 192, 192, 0.5), 0 0 10px rgba(255, 255, 255, 0.4) inset;
+        }
+
+        #glass-gold:checked~.glass-glider {
+            transform: translateX(100%);
+            background: linear-gradient(135deg, #ffd70055, #ffcc00);
+            box-shadow: 0 0 18px rgba(255, 215, 0, 0.5), 0 0 10px rgba(255, 235, 150, 0.4) inset;
+        }
+
+        #glass-platinum:checked~.glass-glider {
+            transform: translateX(200%);
+            background: linear-gradient(135deg, #d0e7ff55, #a0d8ff);
+            box-shadow: 0 0 18px rgba(160, 216, 255, 0.5), 0 0 10px rgba(200, 240, 255, 0.4) inset;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .about-info {
+            background: var(--glass-dark);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 13px;
+        }
+
+        .info-label {
+            opacity: 0.5;
+        }
+
+        .info-value {
+            color: var(--primary);
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="glass-card">
+        <div class="wifi-btn offline" id="wifiIcon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+                <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+                <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+                <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+                <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+                <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+                <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+        </div>
+
+        <div class="settings-btn" id="cogBtn" onclick="toggleSettings(true)" style="right: 20px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                </path>
+            </svg>
+        </div>
+
+        <!-- Sync Interlock Overlay -->
+        <div id="syncOverlay"
+            style="position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 40px; color: white; transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1); pointer-events: all;">
+            <div id="syncLoader" class="loader-pulse"
+                style="width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; box-shadow: 0 0 15px rgba(255,255,255,0.1);">
+            </div>
+            <p id="syncText"
+                style="margin-top: 25px; font-weight: 800; letter-spacing: 3px; font-size: 12px; opacity: 0.8; text-align: center; padding: 0 40px;">
+                CONNECTING TO CORE...</p>
+        </div>
+
+        <div id="mainPanel">
+            <div class="header">
+                <h2>SMART SWITCH</h2>
+                <p class="subtitle">Control your devices</p>
+            </div>
+
+            <div class="button-grid">
+                <div class="control-btn" id="btn1">
+                    <div class="lock-container locked" id="lock1">
+                        <svg viewBox="0 0 576 512" class="lock-open">
+                            <path
+                                d="M352 144c0-44.2 35.8-80 80-80s80 35.8 80 80v48c0 17.7 14.3 32 32 32s32-14.3 32-32V144C576 64.5 511.5 0 432 0S288 64.5 288 144v48H64c-35.3 0-64 28.7-64 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V256c0-35.3-28.7-64-64-64H352V144z" />
+                        </svg>
+                        <svg viewBox="0 0 448 512" class="lock">
+                            <path
+                                d="M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z" />
+                        </svg>
+                    </div>
+                    <div class="status-indicator"></div>
+                    <div class="btn-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="5" />
+                            <line x1="12" y1="1" x2="12" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="23" />
+                            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                            <line x1="1" y1="12" x2="3" y2="12" />
+                            <line x1="21" y1="12" x2="23" y2="12" />
+                            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                        </svg>
+                    </div>
+                    <div class="btn-label" id="label1">Switch 1</div>
+                </div>
+
+                <div class="control-btn" id="btn2">
+                    <div class="status-indicator"></div>
+                    <div class="btn-icon">
+                        <svg width="44" height="44" viewBox="0 0 44 44" fill="none" stroke="currentColor"
+                            stroke-width="1.8">
+                            <!-- Socket (bottom) with depth -->
+                            <rect class="socket" x="8" y="26" width="28" height="15" rx="2.5" stroke-width="2.2"
+                                fill="rgba(0,0,0,0.2)" />
+                            <rect class="socket-inner" x="10" y="28" width="24" height="11" rx="1.5" stroke-width="1.5"
+                                opacity="0.5" />
+                            <line x1="15" y1="30" x2="15" y2="37" stroke-width="3" stroke-linecap="round" />
+                            <line x1="29" y1="30" x2="29" y2="37" stroke-width="3" stroke-linecap="round" />
+                            <circle cx="22" cy="33.5" r="1.5" fill="currentColor" opacity="0.3" />
+
+                            <!-- Power cable -->
+                            <path class="cable" d="M22 3 Q22 8, 22 12" stroke-width="2.5" stroke-linecap="round"
+                                opacity="0.7" />
+
+                            <!-- Plug (top - moves down when ON) -->
+                            <g class="plug">
+                                <rect x="14" y="12" width="16" height="11" rx="2" stroke-width="2.2"
+                                    fill="rgba(255,255,255,0.05)" />
+                                <rect x="15.5" y="13.5" width="13" height="8" rx="1" stroke-width="1" opacity="0.4" />
+                                <line x1="18" y1="23" x2="18" y2="28" stroke-width="3" stroke-linecap="round" />
+                                <line x1="26" y1="23" x2="26" y2="28" stroke-width="3" stroke-linecap="round" />
+                                <circle cx="22" cy="17" r="1" fill="currentColor" opacity="0.5" />
+                                <line x1="19" y1="3" x2="19" y2="12" stroke-width="2.2" stroke-linecap="round" />
+                                <line x1="25" y1="3" x2="25" y2="12" stroke-width="2.2" stroke-linecap="round" />
+                            </g>
+
+                            <!-- Electric current effects (only visible when ON) -->
+                            <g class="current-effects">
+                                <!-- Lightning arcs -->
+                                <path class="arc1" d="M20 29 L18 31 L20 31 L19 33" stroke="#38bdf8" stroke-width="1.8"
+                                    fill="none" stroke-linejoin="round" stroke-linecap="round" />
+                                <path class="arc2" d="M24 29 L26 31 L24 31 L25 33" stroke="#2dd4bf" stroke-width="1.8"
+                                    fill="none" stroke-linejoin="round" stroke-linecap="round" />
+
+                                <!-- Energy particles -->
+                                <circle class="particle1" cx="17" cy="30" r="1.2" fill="#38bdf8" />
+                                <circle class="particle2" cx="27" cy="31" r="1" fill="#2dd4bf" />
+                                <circle class="particle3" cx="22" cy="29" r="0.8" fill="#fbbf24" />
+
+                                <!-- Glow lines -->
+                                <line x1="18" y1="28" x2="18" y2="30" stroke="#38bdf8" stroke-width="2"
+                                    stroke-linecap="round" opacity="0.6" />
+                                <line x1="26" y1="28" x2="26" y2="30" stroke="#2dd4bf" stroke-width="2"
+                                    stroke-linecap="round" opacity="0.6" />
+                            </g>
+                        </svg>
+                    </div>
+                    <div class="btn-label" id="label2">Switch 2</div>
+                </div>
+
+                <div class="control-btn" id="btn3">
+                    <div class="status-indicator"></div>
+                    <div class="btn-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                    </div>
+                    <div class="btn-label" id="label3">Switch 3</div>
+                </div>
+
+                <div class="control-btn" id="btn4">
+                    <div class="lock-container locked" id="lock4">
+                        <svg viewBox="0 0 576 512" class="lock-open">
+                            <path
+                                d="M352 144c0-44.2 35.8-80 80-80s80 35.8 80 80v48c0 17.7 14.3 32 32 32s32-14.3 32-32V144C576 64.5 511.5 0 432 0S288 64.5 288 144v48H64c-35.3 0-64 28.7-64 64V448c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V256c0-35.3-28.7-64-64-64H352V144z" />
+                        </svg>
+                        <svg viewBox="0 0 448 512" class="lock">
+                            <path
+                                d="M144 144v48H304V144c0-44.2-35.8-80-80-80s-80 35.8-80 80zM80 192V144C80 64.5 144.5 0 224 0s144 64.5 144 144v48h16c35.3 0 64 28.7 64 64V448c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V256c0-35.3 28.7-64 64-64H80z" />
+                        </svg>
+                    </div>
+                    <div class="status-indicator"></div>
+                    <div class="btn-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                            <circle cx="12" cy="12" r="3" />
+                        </svg>
+                    </div>
+                    <div class="btn-label" id="label4">Switch 4</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="settingsPanel" style="display: none;">
+            <div class="top-bar">
+                <div class="back-btn-circle" onclick="toggleSettings(false)">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2.8">
+                        <path d="M19 12H5m7 7l-7-7 7-7" />
+                    </svg>
+                </div>
+                <h2 class="settings-title">SETTINGS</h2>
+            </div>
+
+            <div class="header" style="margin-top: 0;">
+                <p class="subtitle" style="margin-top: -15px;">Customize botman🤖</p>
+            </div>
+
+            <div class="glass-tab-nav">
+                <input type="radio" name="settings-tab" id="tab-rename" checked onchange="switchTab('rename')">
+                <label for="tab-rename">Names</label>
+
+                <input type="radio" name="settings-tab" id="tab-timer" onchange="switchTab('timer')">
+                <label for="tab-timer">Clock</label>
+
+                <input type="radio" name="settings-tab" id="tab-aura" onchange="switchTab('aura')">
+                <label for="tab-aura">Aura</label>
+
+                <input type="radio" name="settings-tab" id="tab-theme" onchange="switchTab('theme')">
+                <label for="tab-theme">Theme</label>
+
+                <input type="radio" name="settings-tab" id="tab-about" onchange="switchTab('about')">
+                <label for="tab-about">About</label>
+
+                <div class="glass-glider"></div>
+            </div>
+
+            <div id="renameTab" class="tab-content active">
+                <div class="field-label">BUTTON NAMES</div>
+                <div class="rename-grid">
+                    <!-- Dynamic Items -->
+                </div>
+                <button class="save-btn" onclick="saveNames()">SAVE CONFIGURATION</button>
+            </div>
+
+            <!-- TAB: SCHEDULES -->
+            <div id="timerTab" class="tab-content">
+                <div class="glass-card" style="padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 14px; opacity: 0.7; letter-spacing: 1px;">⏳ COUNTDOWN
+                        TIMER</h3>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <select id="timerSwitch" class="glass-input" style="flex: 1;">
+                            <option value="switch1">Switch 1</option>
+                            <option value="switch2">Switch 2</option>
+                            <option value="switch3">Switch 3</option>
+                            <option value="switch4">Switch 4</option>
+                        </select>
+                        <select id="timerAction" class="glass-input" style="width: 70px;">
+                            <option value="1">ON</option>
+                            <option value="0">OFF</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="number" id="timerDuration" placeholder="Minutes" class="glass-input"
+                            style="flex: 1;">
+                        <button onclick="setTimer()" class="action-btn" style="flex: 0 0 80px;">START</button>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="padding: 20px; margin-bottom: 20px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 14px; opacity: 0.7; letter-spacing: 1px;">📅 DAILY
+                        SCHEDULE</h3>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <select id="schedSwitch" class="glass-input" style="flex: 1;">
+                            <option value="switch1">Switch 1</option>
+                            <option value="switch2">Switch 2</option>
+                            <option value="switch3">Switch 3</option>
+                            <option value="switch4">Switch 4</option>
+                        </select>
+                        <select id="schedAction" class="glass-input" style="width: 70px;">
+                            <option value="1">ON</option>
+                            <option value="0">OFF</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="time" id="schedTime" class="glass-input" style="flex: 1; color-scheme: dark;">
+                        <button onclick="setSchedule()" class="action-btn" style="flex: 0 0 80px;">SET</button>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 12px; opacity: 0.5; letter-spacing: 1px; margin-bottom: 10px;">ACTIVE TASKS</h3>
+                <div id="activeTasksList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+            </div>
+
+            <div id="auraTab" class="tab-content">
+                <div class="aura-tab-container">
+                    <div class="dial-container">
+                        <div class="dial-base">
+                            <div class="dial-line"></div>
+                            <div class="dial-line"></div>
+                            <div class="dial-line"></div>
+                            <div class="dial-line"></div>
+                        </div>
+                        <div class="dial-light" id="dialLight">
+                            <div class="dial-light-beam"></div>
+                        </div>
+                        <div class="dial-label-ring" id="dialLabels">
+                            <div class="dial-label" onclick="selectDialMode(0)"><span>OFF</span></div>
+                            <div class="dial-label" onclick="selectDialMode(1)"><span>1</span></div>
+                            <div class="dial-label" onclick="selectDialMode(2)"><span>2</span></div>
+                            <div class="dial-label" onclick="selectDialMode(3)"><span>3</span></div>
+                            <div class="dial-label" onclick="selectDialMode(4)"><span>4</span></div>
+                            <div class="dial-label" onclick="selectDialMode(5)"><span>5</span></div>
+                            <div class="dial-label" onclick="selectDialMode(6)"><span>6</span></div>
+                            <div class="dial-label" onclick="selectDialMode(7)"><span>7</span></div>
+                        </div>
+                        <div class="dial-inner"></div>
+                        <div class="dial-knob" id="dialKnob"></div>
+                    </div>
+                    <div class="mode-description" id="modeDesc">TOTAL DARKNESS</div>
+                </div>
+            </div>
+
+            <div id="themeTab" class="tab-content">
+                <div class="field-label">SYSTEM APPEARANCE</div>
+
+                <!-- Mini Tab Switcher -->
+                <div class="mini-tab-wrapper">
+                    <div class="mini-tab-btn active" onclick="switchSubTab('look', this)">LOOK</div>
+                    <div class="mini-tab-btn" onclick="switchSubTab('style', this)">STYLE</div>
+                </div>
+
+                <!-- SUB TAB: LOOK (Color Templates) -->
+                <div id="subTab-look" class="sub-tab-view active">
+                    <div class="theme-scroll-area">
+
+                        <!-- Theme 1: Evergreen -->
+                        <div class="theme-card active" onclick="selectThemeCard(this, 'theme1')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #2a4d45, #1F3A34);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Evergreen Edition</div>
+                                <div class="theme-tags">Forest • Snow • Luxury</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 2: Midnight Ultraviolet -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme2')">
+                            <div class="theme-preview"
+                                style="background: linear-gradient(135deg, #1a1a1a, #000000); border-color: #AC58E9;">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Midnight Ultraviolet</div>
+                                <div class="theme-tags">Absolute Black • Neon Purple</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 3: Sapphire Frost -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme3')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #0F52BA, #000926);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Sapphire Frost</div>
+                                <div class="theme-tags">Deep Navy • Ice Blue</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 4: Crimson Velvet -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme4')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #98111E, #3F0D12);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Crimson Velvet</div>
+                                <div class="theme-tags">Bordeaux • Soft Blush</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 5: Olive Sanctuary -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme5')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #6b6c45, #535434);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Olive Sanctuary</div>
+                                <div class="theme-tags">Organic Depth • Soft Sand</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 6: Royal Coast -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme6')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #3E0F2F, #25091C);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Royal Coast</div>
+                                <div class="theme-tags">Noel Royale • Coast Gold</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 7: Garnet Cashmere -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme7')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #90353D, #4a1b20);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Garnet Cashmere</div>
+                                <div class="theme-tags">Royal Garnet • Warm Cream</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <!-- Theme 8: Misty Monsoon -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme8')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #7D7D7D, #4a4a4a);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Misty Monsoon</div>
+                                <div class="theme-tags">Grey Mist • Lilac Bloom</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 9: Twilight Rain -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme9')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #7A5C8A, #2d2d2d);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Twilight Rain</div>
+                                <div class="theme-tags">Deep Purple • Teal Rain</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 10: Monsoon Meadow -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme10')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #3C8997, #1a3d35);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Monsoon Meadow</div>
+                                <div class="theme-tags">Lush Teal • Golden Sun</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Theme 11: Rainy Street Glow -->
+                        <div class="theme-card" onclick="selectThemeCard(this, 'theme11')">
+                            <div class="theme-preview" style="background: linear-gradient(135deg, #4A4A4A, #1a1a1a);">
+                            </div>
+                            <div class="theme-info">
+                                <div class="theme-name">Rainy Street Glow</div>
+                                <div class="theme-tags">Urban Asphalt • Warm Glow</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB TAB: STYLE (Text Styles) -->
+                <div id="subTab-style" class="sub-tab-view" style="display: none;">
+                    <div class="theme-scroll-area">
+
+                        <!-- Font 1: Modern (Inter) -->
+                        <div class="theme-card active" onclick="selectFontCard(this, `'Inter', sans-serif`)">
+                            <div class="theme-preview"
+                                style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Inter', sans-serif; font-size: 24px; font-weight: 800;">
+                                Aa</div>
+                            <div class="theme-info">
+                                <div class="theme-name" style="font-family: 'Inter', sans-serif;">Modern Standard</div>
+                                <div class="theme-tags">Clean • Functional</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Font 2: Biscotti (Fredoka) -->
+                        <div class="theme-card" onclick="selectFontCard(this, `'Fredoka', sans-serif`)">
+                            <div class="theme-preview"
+                                style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Fredoka', sans-serif; font-size: 24px; font-weight: 600;">
+                                Aa</div>
+                            <div class="theme-info">
+                                <div class="theme-name" style="font-family: 'Fredoka', sans-serif;">Biscotti Soft</div>
+                                <div class="theme-tags">Rounded • Bubbly</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Font 3: Doll Ghoom (Luckiest Guy) -->
+                        <div class="theme-card" onclick="selectFontCard(this, `'Luckiest Guy', cursive`)">
+                            <div class="theme-preview"
+                                style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Luckiest Guy', cursive; font-size: 22px; font-weight: 400; letter-spacing: 1px;">
+                                Aa</div>
+                            <div class="theme-info">
+                                <div class="theme-name" style="font-family: 'Luckiest Guy', cursive;">Doll Ghoom</div>
+                                <div class="theme-tags">Funky • Cartoon</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Font 4: Nativera (Orbitron) -->
+                        <div class="theme-card" onclick="selectFontCard(this, `'Orbitron', sans-serif`)">
+                            <div class="theme-preview"
+                                style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Orbitron', sans-serif; font-size: 20px; font-weight: 600;">
+                                Aa</div>
+                            <div class="theme-info">
+                                <div class="theme-name" style="font-family: 'Orbitron', sans-serif;">Nativera Tech</div>
+                                <div class="theme-tags">Sci-Fi • Geometric</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Font 5: Qasira (Cinzel) -->
+                        <div class="theme-card" onclick="selectFontCard(this, `'Cinzel', serif`)">
+                            <div class="theme-preview"
+                                style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 22px; font-weight: 600;">
+                                Aa</div>
+                            <div class="theme-info">
+                                <div class="theme-name" style="font-family: 'Cinzel', serif;">Qasira Royal</div>
+                                <div class="theme-tags">Cinematic • Sharp</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Font 6: Elcherin (Abril Fatface) -->
+                        <div class="theme-card" onclick="selectFontCard(this, `'Abril Fatface', cursive`)">
+                            <div class="theme-preview"
+                                style="background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-family: 'Abril Fatface', cursive; font-size: 24px; font-weight: 400;">
+                                Aa</div>
+                            <div class="theme-info">
+                                <div class="theme-name" style="font-family: 'Abril Fatface', cursive;">Elcherin Bold
+                                </div>
+                                <div class="theme-tags">Editorial • Heavy</div>
+                            </div>
+                            <div class="theme-check">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div id="aboutTab" class="tab-content">
+                <div class="about-info">
+                    <div class="info-row">
+                        <span class="info-label">Device Name</span>
+                        <span class="info-value">botman🤖</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Firmware</span>
+                        <span class="info-value">v14.5</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Signal Strength</span>
+                        <span class="info-value" id="signalStr">-- dBm</span>
+                    </div>
+                    <div class="danger-zone">
+                        <div class="field-label">System Maintenance</div>
+                        <button class="reboot-btn" onclick="triggerReboot()">FORCE REMOTE REBOOT</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Custom Confirmation Modal -->
+        <div class="confirm-overlay" id="confirmModal">
+            <div class="confirm-dialog">
+                <div class="confirm-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path
+                            d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                        </path>
+                        <line x1="12" y1="9" x2="12" y2="13"></line>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="confirm-title" id="confirmTitle">Confirm Action</div>
+                <div class="confirm-message" id="confirmMessage">Are you sure you want to proceed?</div>
+                <div class="confirm-buttons">
+                    <button class="confirm-btn confirm-btn-cancel" id="confirmCancel">Cancel</button>
+                    <button class="confirm-btn confirm-btn-ok" id="confirmOk">OK</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // --- WEBSOCKET SYSTEM ---
+            let socket;
+            let isOnline = false;
+            let lastPacket = Date.now();
+            let currentState = {
+                switches: { switch1: 0, switch2: 0, switch3: 0, switch4: 0 },
+                physical: { switch1: 0, switch4: 0 },
+                names: { switch1: 'Main Switch', switch2: 'Power Outlet', switch3: 'Turbo Mode', switch4: 'Night Light' },
+                system: { ledMode: 1, rssi: 0 }
+            };
+
+            // Force Render URL if running locally, otherwise use relative path
+            const WS_URL = (window.location.hostname === "" || window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+                ? 'wss://home-smart.onrender.com'
+                : (window.location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '');
+
+            function connect() {
+                socket = new WebSocket(WS_URL);
+
+                socket.onopen = () => {
+                    console.log('X-CORE Secure Link Active');
+                    isOnline = true;
+                    setWifiStatus('online');
+                };
+
+                socket.onclose = () => {
+                    console.log('Secure Link Severed');
+                    isOnline = false;
+                    setWifiStatus('offline');
+                    setTimeout(connect, 3000);
+                };
+
+                socket.onmessage = (event) => {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'FULL_STATE' || msg.type === 'STATE_CHANGED') {
+                        lastPacket = Date.now();
+
+                        const overlay = document.getElementById('syncOverlay');
+                        const syncText = document.getElementById('syncText');
+                        const syncLoader = document.getElementById('syncLoader');
+
+                        if (msg.data.isHardwareOnline) {
+                            // Hardware Found: Unlock UI
+                            overlay.style.opacity = '0';
+                            overlay.style.pointerEvents = 'none';
+                        } else {
+                            // Hardware Missing: Lock UI & Update Message
+                            overlay.style.opacity = '1';
+                            overlay.style.pointerEvents = 'all';
+                            syncText.innerText = 'CORE IS OFFLINE\nWAITING FOR HARDWARE...';
+                            syncText.style.color = '#ff4444';
+                            syncLoader.style.borderTopColor = '#ff4444';
+                        }
+                        updateFullUI(msg.data);
+                    } else if (msg.type === 'ERROR') {
+                        showConfirm('Request Failed', msg.message, false);
+                    }
+                };
+            }
+
+            const updateFullUI = (state) => {
+                currentState = state;
+
+                // Sync Switches
+                for (let i = 1; i <= 4; i++) {
+                    const swId = 'switch' + i;
+                    const nameId = 'name' + i;
+                    const val = state.switches[swId];
+                    const btn = document.getElementById(`btn${i}`);
+                    if (val) btn.classList.add('on'); else btn.classList.remove('on');
+
+                    // Sync Names
+                    const label = document.getElementById(`label${i}`);
+                    if (label) label.innerText = state.names[nameId] || `Switch ${i}`;
+
+                    // Sync Physical Locks (1 & 4)
+                    if (i === 1 || i === 4) {
+                        const isPhysActive = state.physical[swId] === 1;
+                        const lockEl = document.getElementById(`lock${i}`);
+                        if (lockEl) {
+                            lockEl.className = isPhysActive ? "lock-container unlocked" : "lock-container locked";
+                        }
+                    }
+                }
+
+                // Sync System
+                updateDialUI(state.system.ledMode);
+
+                // Sync System
+                updateDialUI(state.system.ledMode);
+
+                // Hardware Online Protection
+                const buttons = document.querySelectorAll('.control-btn');
+                buttons.forEach(btn => {
+                    if (state.isHardwareOnline) {
+                        btn.style.opacity = '1';
+                        btn.style.pointerEvents = 'auto';
+                    } else {
+                        btn.style.opacity = '0.5';
+                        btn.style.pointerEvents = 'none';
+                    }
+                });
+
+                // Live Hardware Status
+                setWifiStatus(state.isHardwareOnline ? 'online' : 'offline');
+
+                // Sync RSSI
+                const signalEl = document.getElementById('signalStr');
+                if (signalEl && state.system.rssi !== undefined) {
+                    signalEl.innerText = state.system.rssi + ' dBm';
+                    // Color code based on strength
+                    if (state.system.rssi > -60) signalEl.style.color = '#10b981';
+                    else if (state.system.rssi > -80) signalEl.style.color = '#f59e0b';
+                    else signalEl.style.color = '#ef4444';
+                }
+
+                // Status Indicator dots
+                document.querySelectorAll('.status-indicator').forEach(el => {
+                    if (el) {
+                        el.style.background = state.isHardwareOnline ? '#00ff88' : '#666';
+                        el.style.boxShadow = state.isHardwareOnline ? '1px 1px 10px #00ff88' : 'none';
+                    }
+                });
+            };
+
+            // --- PRESERVED UI FUNCTIONS ---
+            window.showConfirm = (title, message, showCancel = true) => {
+                return new Promise((resolve) => {
+                    const modal = document.getElementById('confirmModal');
+                    const titleEl = document.getElementById('confirmTitle');
+                    const messageEl = document.getElementById('confirmMessage');
+                    const okBtn = document.getElementById('confirmOk');
+                    const cancelBtn = document.getElementById('confirmCancel');
+
+                    titleEl.textContent = title;
+                    messageEl.textContent = message;
+
+                    cancelBtn.style.display = showCancel ? 'block' : 'none';
+                    modal.classList.add('show');
+
+                    const handleOk = () => {
+                        modal.classList.remove('show');
+                        cleanup();
+                        resolve(true);
+                    };
+
+                    const handleCancel = () => {
+                        modal.classList.remove('show');
+                        cleanup();
+                        resolve(false);
+                    };
+
+                    const cleanup = () => {
+                        okBtn.removeEventListener('click', handleOk);
+                        cancelBtn.removeEventListener('click', handleCancel);
+                    };
+
+                    okBtn.addEventListener('click', handleOk);
+                    if (showCancel) {
+                        cancelBtn.addEventListener('click', handleCancel);
+                    }
+                });
+            };
+
+            window.triggerReboot = async () => {
+                const confirmed = await showConfirm(
+                    'Reboot Device',
+                    'Are you sure you want to reboot botman🤖? It will be offline for ~5 seconds.'
+                );
+
+                if (confirmed) {
+                    setWifiStatus('rebooting');
+                    socket.send(JSON.stringify({ type: 'SYSTEM_UPDATE', data: { reboot: 1 } }));
+                }
+            };
+
+            window.switchTab = (tabName) => {
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                    content.style.display = 'none';
+                });
+                const target = document.getElementById(tabName + 'Tab');
+                if (target) {
+                    target.classList.add('active');
+                    target.style.display = 'block';
+                }
+            };
+
+            window.changeTheme = (theme) => {
+                const root = document.documentElement;
+                root.style.setProperty('--glass', 'rgba(255, 255, 255, 0.08)');
+
+                if (theme === 'theme1') {
+                    root.style.setProperty('--evergreen', '#1F3A34');
+                    root.style.setProperty('--snow', '#F4F8F9');
+                    root.style.setProperty('--primary', '#F4F8F9');
+                    root.style.setProperty('--glass', 'rgba(244, 248, 249, 0.08)');
+                    root.style.setProperty('--glass-dark', 'rgba(31, 58, 52, 0.4)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #2a4d45, #1F3A34)';
+                }
+                else if (theme === 'theme2') {
+                    root.style.setProperty('--evergreen', '#000000');
+                    root.style.setProperty('--snow', '#AC58E9');
+                    root.style.setProperty('--primary', '#AC58E9');
+                    root.style.setProperty('--glass', 'rgba(172, 88, 233, 0.08)');
+                    root.style.setProperty('--glass-dark', 'rgba(20, 20, 20, 0.6)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #1a1a1a, #000000)';
+                }
+                else if (theme === 'theme3') {
+                    root.style.setProperty('--evergreen', '#000926');
+                    root.style.setProperty('--snow', '#D6E6F3');
+                    root.style.setProperty('--primary', '#D6E6F3');
+                    root.style.setProperty('--glass', 'rgba(214, 230, 243, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(0, 9, 38, 0.5)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #0F52BA, #000926)';
+                }
+                else if (theme === 'theme4') {
+                    root.style.setProperty('--evergreen', '#3F0D12');
+                    root.style.setProperty('--snow', '#FBE4E3');
+                    root.style.setProperty('--primary', '#FBE4E3');
+                    root.style.setProperty('--glass', 'rgba(251, 228, 227, 0.08)');
+                    root.style.setProperty('--glass-dark', 'rgba(63, 13, 18, 0.5)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #98111E, #3F0D12)';
+                }
+                else if (theme === 'theme5') {
+                    root.style.setProperty('--evergreen', '#535434');
+                    root.style.setProperty('--snow', '#D7D8B6');
+                    root.style.setProperty('--primary', '#D7D8B6');
+                    root.style.setProperty('--glass', 'rgba(215, 216, 182, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(83, 84, 52, 0.5)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #6b6c45, #535434)';
+                }
+                else if (theme === 'theme6') {
+                    root.style.setProperty('--evergreen', '#3E0F2F');
+                    root.style.setProperty('--snow', '#D4A964');
+                    root.style.setProperty('--primary', '#D4A964');
+                    root.style.setProperty('--glass', 'rgba(212, 169, 100, 0.08)');
+                    root.style.setProperty('--glass-dark', 'rgba(62, 15, 47, 0.5)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #581644, #25091C)';
+                }
+                else if (theme === 'theme7') {
+                    root.style.setProperty('--evergreen', '#4a1b20');
+                    root.style.setProperty('--snow', '#F4EDE3');
+                    root.style.setProperty('--primary', '#F4EDE3');
+                    root.style.setProperty('--glass', 'rgba(244, 237, 227, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(90, 30, 35, 0.5)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #90353D, #4a1b20)';
+                }
+                else if (theme === 'theme8') {
+                    root.style.setProperty('--evergreen', '#404040');
+                    root.style.setProperty('--snow', '#CDB4DB');
+                    root.style.setProperty('--primary', '#A9C9FF');
+                    root.style.setProperty('--glass', 'rgba(205, 180, 219, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(64, 64, 64, 0.6)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #7D7D7D, #2F2F2F)';
+                }
+                else if (theme === 'theme9') {
+                    root.style.setProperty('--evergreen', '#2D2232');
+                    root.style.setProperty('--snow', '#7FB3B0');
+                    root.style.setProperty('--primary', '#7A5C8A');
+                    root.style.setProperty('--glass', 'rgba(127, 179, 176, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(45, 34, 50, 0.6)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #7A5C8A, #1a1a1a)';
+                }
+                else if (theme === 'theme10') {
+                    root.style.setProperty('--evergreen', '#1a3d35');
+                    root.style.setProperty('--snow', '#CDC12B');
+                    root.style.setProperty('--primary', '#CDC12B');
+                    root.style.setProperty('--glass', 'rgba(205, 193, 43, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(26, 61, 53, 0.6)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #3C8997, #1a3d35)';
+                }
+                else if (theme === 'theme11') {
+                    root.style.setProperty('--evergreen', '#1a1a1a');
+                    root.style.setProperty('--snow', '#F4D06F');
+                    root.style.setProperty('--primary', '#A3C1D1');
+                    root.style.setProperty('--glass', 'rgba(244, 208, 111, 0.1)');
+                    root.style.setProperty('--glass-dark', 'rgba(26, 26, 26, 0.7)');
+                    document.body.style.background = 'radial-gradient(circle at top right, #4A4A4A, #0f0f0f)';
+                }
+            };
+
+            window.switchSubTab = (tabName, btn) => {
+                document.querySelectorAll('.mini-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('subTab-look').style.display = 'none';
+                document.getElementById('subTab-style').style.display = 'none';
+                document.getElementById('subTab-' + tabName).style.display = 'block';
+            };
+
+            window.selectThemeCard = (card, themeId) => {
+                document.querySelectorAll('#subTab-look .theme-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                changeTheme(themeId);
+                localStorage.setItem('selectedTheme', themeId);
+            };
+
+            window.selectFontCard = (card, fontStack) => {
+                document.querySelectorAll('#subTab-style .theme-card').forEach(c => c.classList.remove('active'));
+                card.classList.add('active');
+                document.documentElement.style.setProperty('--font-family', fontStack);
+                localStorage.setItem('selectedFont', fontStack);
+            };
+
+            const modeNames = [
+                "TOTAL DARKNESS",
+                "SENTIENT BREATHING",
+                "BIO-HEARTBEAT",
+                "FIREFLY DRIFT",
+                "OCEAN WAVE",
+                "AURA PULSE",
+                "CONSTANT GLOW",
+                "HEARTBEAT ALERT"
+            ];
+
+            window.selectDialMode = (m) => {
+                socket.send(JSON.stringify({ type: 'SYSTEM_UPDATE', data: { ledMode: parseInt(m) } }));
+            };
+
+            const updateDialUI = (m) => {
+                const angle = -90 + (m * 45);
+                const knob = document.getElementById('dialKnob');
+                const light = document.getElementById('dialLight');
+                const labels = document.querySelectorAll('.dial-label');
+                const desc = document.getElementById('modeDesc');
+
+                if (knob) knob.style.transform = `rotate(${m * 45}deg)`;
+                if (light) light.style.transform = `rotate(${(m * 45) - 90}deg)`;
+
+                labels.forEach((l, i) => {
+                    if (i === m) l.classList.add('active');
+                    else l.classList.remove('active');
+                });
+
+                if (desc) {
+                    desc.innerText = modeNames[m] || "CUSTOM";
+                }
+            };
+
+
+            window.updateLEDMode = (m) => {
+                socket.send(JSON.stringify({ type: 'SYSTEM_UPDATE', data: { ledMode: parseInt(m) } }));
+            };
+
+            const setWifiStatus = (status) => {
+                const btn = document.getElementById('wifiIcon');
+                if (!btn) return;
+                btn.className = 'wifi-btn ' + status;
+                if (status === 'online' || status === 'rebooting') {
+                    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>`;
+                } else {
+                    btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>`;
+                }
+            };
+
+            const setupSettings = () => {
+                const list = document.querySelector('.rename-grid');
+                list.innerHTML = '';
+                for (let i = 1; i <= 4; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'rename-item';
+                    item.innerHTML = `<div class="btn-number">${i}</div><input type="text" id="name${i}" placeholder="Name for Switch ${i}">`;
+                    list.appendChild(item);
+                }
+            };
+            setupSettings();
+
+            // --- SCHEDULE & TIMER LOGIC ---
+            window.setTimer = () => {
+                const switchId = document.getElementById('timerSwitch').value;
+                const action = parseInt(document.getElementById('timerAction').value);
+                const duration = parseInt(document.getElementById('timerDuration').value);
+
+                if (!duration || duration <= 0) {
+                    showConfirm('Invalid Time', 'Please enter a valid duration in minutes.', false);
+                    return;
+                }
+
+                socket.send(JSON.stringify({
+                    type: 'SET_TIMER',
+                    data: { switchId, active: true, duration: duration * 60, action } // Convert mins to seconds
+                }));
+                showConfirm('Timer Started', `Turning ${switchId} ${action ? 'ON' : 'OFF'} in ${duration} mins.`, false);
+            };
+
+            window.setSchedule = () => {
+                const switchId = document.getElementById('schedSwitch').value;
+                const action = parseInt(document.getElementById('schedAction').value);
+                const time = document.getElementById('schedTime').value;
+
+                if (!time) {
+                    showConfirm('Invalid Time', 'Please select a valid time.', false);
+                    return;
+                }
+
+                socket.send(JSON.stringify({
+                    type: 'SET_SCHEDULE',
+                    data: { switchId, active: true, time, action }
+                }));
+                showConfirm('Schedule Set', `${switchId} will turn ${action ? 'ON' : 'OFF'} everyday at ${time}.`, false);
+            };
+
+            window.deleteTask = (type, switchId) => {
+                if (type === 'timer') {
+                    socket.send(JSON.stringify({
+                        type: 'SET_TIMER',
+                        data: { switchId, active: false, duration: 0, action: 0 }
+                    }));
+                } else {
+                    socket.send(JSON.stringify({
+                        type: 'SET_SCHEDULE',
+                        data: { switchId, active: false, time: '00:00', action: 0 }
+                    }));
+                }
+            };
+
+            function refreshActiveTasks(state) {
+                const list = document.getElementById('activeTasksList');
+                if (!list) return;
+                list.innerHTML = '';
+
+                // Add Schedules
+                if (state.schedules) {
+                    for (const [id, sched] of Object.entries(state.schedules)) {
+                        if (sched.active) {
+                            const name = state.names[`name${id.replace('switch', '')}`] || id;
+                            const el = document.createElement('div');
+                            el.className = 'task-item';
+                            el.style.cssText = 'background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px;';
+                            el.innerHTML = `
+                                <div>
+                                    <div style="font-weight: 700; color: var(--primary);">📅 DAILY @ ${sched.time}</div>
+                                    <div style="opacity: 0.7;">${name} ➔ ${sched.action ? 'ON' : 'OFF'}</div>
+                                </div>
+                                <div onclick="deleteTask('sched', '${id}')" style="background: rgba(255,59,48,0.2); color: #ff3b30; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">✖</div>
+                            `;
+                            list.appendChild(el);
+                        }
+                    }
+                }
+
+                // Add Timers
+                if (state.timers) {
+                    for (const [id, timer] of Object.entries(state.timers)) {
+                        if (timer.active) {
+                            const name = state.names[`name${id.replace('switch', '')}`] || id;
+                            const timeLeft = Math.max(0, Math.ceil((timer.endAt - Date.now()) / 60000)); // Mins left
+                            const el = document.createElement('div');
+                            el.className = 'task-item';
+                            el.style.cssText = 'background: rgba(255,255,255,0.05); padding: 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 13px;';
+                            el.innerHTML = `
+                                <div>
+                                    <div style="font-weight: 700; color: #32d74b;">⏳ IN ${timeLeft} MINS</div>
+                                    <div style="opacity: 0.7;">${name} ➔ ${timer.action ? 'ON' : 'OFF'}</div>
+                                </div>
+                                <div onclick="deleteTask('timer', '${id}')" style="background: rgba(255,59,48,0.2); color: #ff3b30; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">✖</div>
+                            `;
+                            list.appendChild(el);
+                        }
+                    }
+                }
+
+                if (list.children.length === 0) {
+                    list.innerHTML = '<div style="opacity: 0.3; text-align: center; padding: 20px;">No Active Tasks</div>';
+                }
+            }
+
+            window.saveNames = async () => {
+                const updates = {};
+                for (let i = 1; i <= 4; i++) {
+                    const name = document.getElementById(`name${i}`).value.trim();
+                    if (name) {
+                        socket.send(JSON.stringify({ type: 'RENAME', data: { id: `name${i}`, newName: name } }));
+                    }
+                }
+                await showConfirm('Settings Saved', 'Button names have been saved successfully! 🎉', false);
+                toggleSettings(false);
+            };
+
+            window.toggleSettings = (show) => {
+                const card = document.querySelector('.glass-card');
+                document.getElementById('mainPanel').style.display = show ? 'none' : 'block';
+                document.getElementById('settingsPanel').style.display = show ? 'block' : 'none';
+                document.getElementById('cogBtn').style.display = show ? 'none' : 'flex';
+                document.getElementById('wifiIcon').style.display = show ? 'none' : 'flex';
+
+                if (show) {
+                    card.classList.add('settings-mode');
+                    for (let i = 1; i <= 4; i++) {
+                        const label = document.getElementById(`label${i}`).innerText;
+                        document.getElementById(`name${i}`).value = label;
+                    }
+                } else {
+                    card.classList.remove('settings-mode');
+                }
+            };
+
+            // Switch Control Event Listeners
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`btn${i}`).onclick = () => {
+                    if (!isOnline) return;
+                    const switchId = `switch${i}`;
+                    const currentValue = currentState.switches[switchId];
+                    const newValue = currentValue ? 0 : 1;
+
+                    // Superior Switch Logic Hint (Client-side rejection)
+                    /* Software Lock Logic Removed for seamless 2-way experience */
+
+                    socket.send(JSON.stringify({
+                        type: 'TOGGLE_SWITCH',
+                        data: { switchId, value: newValue }
+                    }));
+                };
+            }
+
+
+            window.addEventListener('DOMContentLoaded', () => {
+                const savedTheme = localStorage.getItem('selectedTheme');
+                if (savedTheme) {
+                    changeTheme(savedTheme);
+                    const themeCard = document.querySelector(`#subTab-look .theme-card[onclick*="${savedTheme}"]`);
+                    if (themeCard) {
+                        document.querySelectorAll('#subTab-look .theme-card').forEach(c => c.classList.remove('active'));
+                        themeCard.classList.add('active');
+                    }
+                }
+
+                const savedFont = localStorage.getItem('selectedFont');
+                if (savedFont) {
+                    document.documentElement.style.setProperty('--font-family', savedFont);
+                    const fontCard = document.querySelector(`#subTab-style .theme-card[onclick*="${savedFont.replace(/'/g, "\\'")}"]`);
+                    if (fontCard) {
+                        document.querySelectorAll('#subTab-style .theme-card').forEach(c => c.classList.remove('active'));
+                        fontCard.classList.add('active');
+                    }
+                }
+                connect();
+            });
+
+            document.addEventListener('click', (event) => {
+                const settingsPanel = document.getElementById('settingsPanel');
+                const glassCard = document.querySelector('.glass-card');
+                const settingsBtn = document.getElementById('cogBtn');
+                if (settingsPanel && settingsPanel.style.display === 'block') {
+                    if (!glassCard.contains(event.target) && !settingsBtn.contains(event.target)) {
+                        toggleSettings(false);
+                    }
+                }
+            });
+        </script>
+</body>
+
+</html>
